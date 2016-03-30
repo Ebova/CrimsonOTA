@@ -112,7 +112,7 @@ public class UpdateCheck extends Activity {
             String localVersion = getLocalVersion();
             Log.i("Crimson", "Remote: " + remoteVersion);
             Log.i("Crimson", "Local: " + localVersion);
-            runOnUiThread(new ParamRunnable("0", remoteVersion) { //TODO: insert localVersion!!!
+            runOnUiThread(new ParamRunnable(localVersion, remoteVersion) {
                 @Override
                 public void run() {
                     final TextView versionView = (TextView) findViewById(R.id.status_version);
