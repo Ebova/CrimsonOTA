@@ -1,10 +1,12 @@
 package de.rawbin.crimsonota;
 
 import android.content.Context;
+import android.os.Environment;
 import android.os.PowerManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 
 import de.rawbin.crimsonota.Exceptions.ObjectNotInitializedException;
 import de.rawbin.crimsonota.Exceptions.UnableToSetCommandException;
@@ -18,18 +20,21 @@ public class Updater {
 
     public void reboot() throws ObjectNotInitializedException {
         if(powerMan != null) {
-            powerMan.reboot("Crimson OTA update");
+            powerMan.reboot("recovery");
         }
         else {
             throw new ObjectNotInitializedException();
         }
     }
 
-    public void queueUpdateInstallation(String updatePath) throws UnableToSetCommandException, ObjectNotInitializedException {
+    public void queueUpdateInstallation(String updatePath, ArrayList<String> postInstallPackages) throws UnableToSetCommandException, ObjectNotInitializedException {
         if(context != null) {
             FileOutputStream outputStream;
-            String command = "boot-recovery --update_package=" + updatePath;
+            String command = "--update_package=" + updatePath;
 
+            for(String pkg : postInstallPackages) {
+                command += System.lineSeparator() + "--update_package=" + Environment.getExternalStorageDirectory().getPath() + "/" + pkg;
+            }
             try {
                 File commandFile = new File("/cache/recovery", "command");
                 outputStream = new FileOutputStream(commandFile);
@@ -45,8 +50,8 @@ public class Updater {
         }
     }
 
-    public void installUpdate(String updatePath) throws UnableToSetCommandException, ObjectNotInitializedException {
-        queueUpdateInstallation(updatePath);
+    public void installUpdate(String updatePath, ArrayList<String> postInstallPackages) throws UnableToSetCommandException, ObjectNotInitializedException {
+        queueUpdateInstallation(updatePath, postInstallPackages);
         reboot();
     }
 }

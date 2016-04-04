@@ -13,6 +13,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.io.BufferedInputStream;
@@ -40,6 +41,7 @@ import okhttp3.Response;
 public class UpdateCheck extends Activity {
     private Updater updater = null;
     private OkHttpClient client = new OkHttpClient();
+    private AdditionalPackagesManager pacMan = null;
     private final String ONLINE_UPDATE_ROOT = "https://ariel.rawbin.de/img";
     private final String ONLINE_UPDATE_FILE = "update.zip";
     private final String ONLINE_VERSION = "VERSION";
@@ -130,6 +132,14 @@ public class UpdateCheck extends Activity {
                                     downloadUpdate();
                                 }
                             });
+                            pacMan = new AdditionalPackagesManager();
+                            pacMan.layout = (LinearLayout)findViewById(R.id.additional);
+                            pacMan.context = getBaseContext();
+                            try {
+                                pacMan.createCheckBoxes();
+                            } catch (ObjectNotInitializedException e) {
+                                e.printStackTrace();
+                            }
                         }
                         else {
                             status += "\nIt seems like the version you have installed is newer than the latest version available.";
@@ -167,7 +177,7 @@ public class UpdateCheck extends Activity {
             this.requestPermissions(new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE);
         }
         Button updateButton = (Button) findViewById(R.id.btn_update);
-        updateButton.setEnabled(true);
+        updateButton.setEnabled(false);
         new Thread(new Runnable() {
             public void run() {
                 String fileName = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + UPDATE_FILE;
@@ -194,7 +204,11 @@ public class UpdateCheck extends Activity {
                     }
 
                     showMessage("Success! Rebooting...");
-                    RecoverySystem.installPackage(getBaseContext(), file);
+                    //RecoverySystem.installPackage(getBaseContext(), file);
+                    Updater updater = new Updater();
+                    updater.context = getBaseContext();
+                    updater.powerMan = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                    updater.installUpdate(file.getPath(), pacMan.getAllPackages());
                 } catch (FileNotFoundException e) {
                     showMessage("Error: File has not been saved");
                     e.printStackTrace();
@@ -206,6 +220,11 @@ public class UpdateCheck extends Activity {
                     e.printStackTrace();
                 } catch (NoSuchAlgorithmException e) {
                     showMessage("Error: Your version of android cannot verify the file integrity.");
+                } catch (ObjectNotInitializedException e) {
+                    e.printStackTrace();
+                } catch (UnableToSetCommandException e) {
+                    showMessage("Error: Could not set the command. Permission denied.");
+                    e.printStackTrace();
                 }
             }
         }).start();
