@@ -14,6 +14,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.io.BufferedInputStream;
@@ -37,6 +38,7 @@ import de.rawbin.crimsonota.Utils.ParamRunnable;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class UpdateCheck extends Activity {
     private Updater updater = null;
@@ -146,6 +148,7 @@ public class UpdateCheck extends Activity {
                         }
                     }
                     versionView.setText(status);
+                    ((ProgressBar)findViewById(R.id.progressBar)).setIndeterminate(false);
                 }
             });
         } catch(IOException ex) {
@@ -162,13 +165,24 @@ public class UpdateCheck extends Activity {
         return response.body().string();
     }
 
-    private InputStream getBinaryHttp(String url) throws IOException {
+    private ResponseBody getBinaryHttp(String url) throws IOException {
         Request request = new Request.Builder()
                 .url(url)
                 .build();
 
         Response response = client.newCall(request).execute();
-        return response.body().byteStream();
+        return response.body();
+    }
+
+    private void setPercentage(int percentage) {
+        runOnUiThread(new ParamRunnable(percentage) {
+            @Override
+            public void run() {
+                ProgressBar bar = (ProgressBar) findViewById(R.id.progressBar);
+                bar.setProgress((int) params[0]);
+                Log.i("Crimson", params[0].toString());
+            }
+        });
     }
 
     private void downloadUpdate() {
@@ -187,12 +201,19 @@ public class UpdateCheck extends Activity {
                     File file = new File(Environment.getExternalStorageDirectory(), UPDATE_FILE);
                     if(file.exists()) file.delete();
                     FileOutputStream fileOut = new FileOutputStream(file);
-                    BufferedInputStream in = new BufferedInputStream(getBinaryHttp(ONLINE_UPDATE_ROOT + "/" + ONLINE_UPDATE_FILE));
+                    ResponseBody body = getBinaryHttp(ONLINE_UPDATE_ROOT + "/" + ONLINE_UPDATE_FILE);
+                    BufferedInputStream in = new BufferedInputStream(body.byteStream());
 
                     byte[] buffer = new byte[2048];
                     int count;
+                    long bodyLength = body.contentLength();
+                    long read = 0;
+                    int percentage = 0;
                     while ((count = in.read(buffer)) != -1) {
                         fileOut.write(buffer, 0, count);
+                        read += count;
+                        percentage = (int)Math.round(((double)read / (double)bodyLength) * 100d);
+                        setPercentage(percentage);
                     }
 
                     fileOut.flush();
@@ -253,14 +274,6 @@ public class UpdateCheck extends Activity {
             }
         });
 
-    }
-
-    private static char[] getCharArray(byte[] bytes) {
-        char[] chars = new char[bytes.length];
-        for(int i = 0; i < bytes.length; i++) {
-            chars[i] = (char)bytes[i];
-        }
-        return chars;
     }
 
     private String getFileChecksum(String fileName) throws NoSuchAlgorithmException, IOException {
